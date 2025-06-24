@@ -67,4 +67,8 @@ User.hasMany(Transaction, { as: 'Sales', foreignKey: 'seller_id' });
 Transaction.belongsTo(User, { as: 'Buyer', foreignKey: 'buyer_id' });
 Transaction.belongsTo(User, { as: 'Seller', foreignKey: 'seller_id' });
 
+// Poll-Comment relationship
+Poll.hasMany(Comment, { foreignKey: 'poll_id' });
+Comment.belongsTo(Poll, { foreignKey: 'poll_id' });
+
 module.exports = db;

@@ -152,6 +152,7 @@ router.get("/:id", async (req, res) => {
         },
         {
           model: Option,
+          as: 'Options',
           include: [{
             model: Response,
             attributes: []
@@ -163,12 +164,16 @@ router.get("/:id", async (req, res) => {
                   SELECT COUNT(*)
                   FROM responses AS r
                   WHERE
-                    r.option_id = "Option".option_id
+                    r.option_id = "Options".option_id
                 )`),
                 'response_count'
               ]
             ]
           }
+        },
+        {
+          model: Comment,
+          include: [{ model: User, as: 'Author', attributes: ['nickname'] }],
         }
       ]
     });
@@ -207,6 +212,12 @@ router.post("/:id/responses", auth, async (req, res) => {
     }
     if (poll.expires_at && new Date(poll.expires_at) < new Date()) {
       return res.status(403).json({ message: "This poll has expired." });
+    }
+
+    // 1.5. Check if user already voted
+    const alreadyVoted = await Response.findOne({ where: { user_id, poll_id: pollId } });
+    if (alreadyVoted) {
+      return res.status(409).json({ message: '이미 이 여론조사에 투표하셨습니다.' });
     }
 
     // 2. Check if the chosen option belongs to this poll
@@ -249,7 +260,7 @@ router.get("/:id/results", async (req, res) => {
       where: { poll_id: pollId },
       attributes: [
         [sequelize.col(`"User"."${groupBy}"`), groupBy],
-        [sequelize.col('"Option"."option_text"'), 'option_text'],
+        [sequelize.col('"options"."option_text"'), 'option_text'],
         [sequelize.fn('COUNT', sequelize.col('Response.response_id')), 'count'],
       ],
       include: [
@@ -264,11 +275,11 @@ router.get("/:id/results", async (req, res) => {
       ],
       group: [
         `"User"."${groupBy}"`,
-        '"Option"."option_text"',
+        '"options"."option_text"',
       ],
       order: [
         [sequelize.col(`"User"."${groupBy}"`), 'ASC'],
-        [sequelize.col('"Option"."option_text"'), 'ASC'],
+        [sequelize.col('"options"."option_text"'), 'ASC'],
       ],
       raw: true,
     });
