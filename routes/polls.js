@@ -148,13 +148,14 @@ router.get("/:id", async (req, res) => {
         {
           model: User,
           as: 'Creator',
-          attributes: ['user_id', 'nickname']
+          attributes: ['user_id', 'nickname', 'gender', 'birth_date', 'region', 'job']
         },
         {
           model: Option,
           as: 'Options',
           include: [{
             model: Response,
+            include: [{ model: User, attributes: ['user_id', 'nickname', 'gender', 'birth_date', 'region', 'job'] }],
             attributes: []
           }],
           attributes: {
@@ -185,6 +186,27 @@ router.get("/:id", async (req, res) => {
     // Add user response to the poll data
     const pollData = poll.toJSON();
     pollData.user_response = userResponse;
+
+    // 옵션별 투표자(User) 정보에서 birth_date를 만나이로 변환
+    if (pollData.Options) {
+      pollData.Options.forEach(option => {
+        if (option.Responses) {
+          option.Responses.forEach(response => {
+            if (response.User && response.User.birth_date) {
+              const birth = new Date(response.User.birth_date);
+              const today = new Date();
+              let age = today.getFullYear() - birth.getFullYear();
+              const m = today.getMonth() - birth.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                age--;
+              }
+              response.User.age = age;
+              delete response.User.birth_date;
+            }
+          });
+        }
+      });
+    }
 
     return res.status(200).json(pollData);
 
@@ -388,7 +410,32 @@ router.get('/:id/comments', async (req, res) => {
 
 // 댓글 작성
 router.post('/:id/comments', auth, async (req, res) => {
-  // 구현 예정
+  const pollId = req.params.id;
+  const user_id = req.user.id;
+  const { text } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ message: '댓글 내용을 입력하세요.' });
+  }
+  try {
+    const newComment = await Comment.create({
+      poll_id: pollId,
+      author_id: user_id,
+      content: text.trim()
+    });
+    // 등록 후 poll 상세 조회와 동일하게 댓글 목록 반환
+    const poll = await Poll.findByPk(pollId, {
+      include: [
+        {
+          model: Comment,
+          include: [{ model: User, as: 'Author', attributes: ['user_id', 'nickname'] }],
+        }
+      ]
+    });
+    return res.status(201).json({ message: '댓글이 등록되었습니다.', comments: poll ? poll.Comments : [] });
+  } catch (error) {
+    console.error('Error creating comment:', error);
+    return res.status(500).json({ message: '댓글 등록 중 서버 오류가 발생했습니다.' });
+  }
 });
 
 module.exports = router; 
