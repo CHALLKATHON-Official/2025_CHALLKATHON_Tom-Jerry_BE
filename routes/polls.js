@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { Poll, Option, sequelize, User, Response, Discussion } = require("../models");
+const { Poll, Option, sequelize, User, Response, Discussion, Comment } = require("../models");
 const auth = require('../middleware/auth'); // Import auth middleware
 
 // TODO: Add authentication middleware to get creator_id from token
@@ -111,8 +111,38 @@ router.get("/", async (req, res) => {
 // Get a single poll by ID
 router.get("/:id", async (req, res) => {
   const pollId = req.params.id;
+  const token = req.header('Authorization')?.replace('Bearer ', '');
 
   try {
+    let userResponse = null;
+    
+    // If token exists, get user's response
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_default_secret');
+        const userResponseData = await Response.findOne({
+          where: {
+            poll_id: pollId,
+            user_id: decoded.user.id
+          },
+          include: [{
+            model: Option,
+            attributes: ['option_id', 'option_text']
+          }]
+        });
+        if (userResponseData) {
+          userResponse = {
+            option_id: userResponseData.Option.option_id,
+            option_text: userResponseData.Option.option_text
+          };
+        }
+      } catch (error) {
+        // Token is invalid, continue without user response
+        console.log('Invalid token, continuing without user response');
+      }
+    }
+
     const poll = await Poll.findByPk(pollId, {
       include: [
         {
@@ -122,6 +152,10 @@ router.get("/:id", async (req, res) => {
         },
         {
           model: Option,
+          include: [{
+            model: Response,
+            attributes: []
+          }],
           attributes: {
             include: [
               [
@@ -143,7 +177,11 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ message: "Poll not found." });
     }
 
-    return res.status(200).json(poll);
+    // Add user response to the poll data
+    const pollData = poll.toJSON();
+    pollData.user_response = userResponse;
+
+    return res.status(200).json(pollData);
 
   } catch (error) {
     console.error(`Error fetching poll ${pollId}:`, error);
@@ -152,12 +190,13 @@ router.get("/:id", async (req, res) => {
 });
 
 // Vote on a poll
-router.post("/:id/responses", async (req, res) => {
+router.post("/:id/responses", auth, async (req, res) => {
   const pollId = req.params.id;
-  const { user_id, option_id } = req.body; // user_id should come from auth
+  const { option_id } = req.body; // option_id from body
+  const user_id = req.user.id; // user_id from auth token
 
-  if (!user_id || !option_id) {
-    return res.status(400).json({ message: "user_id and option_id are required." });
+  if (!option_id) {
+    return res.status(400).json({ message: "option_id is required." });
   }
 
   try {
@@ -299,6 +338,46 @@ router.get("/:pollId/discussions", async (req, res) => {
     console.error(`Error fetching discussions for poll ${pollId}:`, error);
     return res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
+});
+
+// 여론조사 전체/카테고리별/검색
+router.get('/', async (req, res) => {
+  // 구현 예정
+});
+
+// 인기 여론조사
+router.get('/popular', async (req, res) => {
+  // 구현 예정
+});
+
+// 급상승 여론조사
+router.get('/trending', async (req, res) => {
+  // 구현 예정
+});
+
+// 여론조사 상세
+router.get('/:id', async (req, res) => {
+  // 구현 예정
+});
+
+// 투표
+router.post('/:id/vote', auth, async (req, res) => {
+  // 구현 예정
+});
+
+// 결과 통계
+router.get('/:id/results', async (req, res) => {
+  // 구현 예정
+});
+
+// 댓글 목록
+router.get('/:id/comments', async (req, res) => {
+  // 구현 예정
+});
+
+// 댓글 작성
+router.post('/:id/comments', auth, async (req, res) => {
+  // 구현 예정
 });
 
 module.exports = router; 

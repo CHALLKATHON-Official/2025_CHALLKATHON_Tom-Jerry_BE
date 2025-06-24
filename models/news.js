@@ -27,6 +27,18 @@ const News = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    image_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    poll_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "polls",
+        key: "poll_id",
+      },
+    },
   },
   {
     timestamps: true,

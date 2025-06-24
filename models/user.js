@@ -44,6 +44,11 @@ const User = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true, // Can be set after signup
     },
+    phone_number: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
   },
   {
     timestamps: true,

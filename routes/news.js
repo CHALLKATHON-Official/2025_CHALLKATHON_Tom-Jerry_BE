@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { News } = require("../models");
+const { News, Poll } = require("../models");
 
 // Get all news articles with pagination
 router.get("/", async (req, res) => {
@@ -23,6 +23,11 @@ router.get("/", async (req, res) => {
     console.error("Error fetching news:", error);
     return res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
+});
+
+// 기사 상세
+router.get('/:id', async (req, res) => {
+  // 구현 예정
 });
 
 module.exports = router; 

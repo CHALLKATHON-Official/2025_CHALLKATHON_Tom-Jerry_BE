@@ -19,7 +19,9 @@ const Poll = sequelize.define(
       },
     },
     category: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(
+        "정치", "경제", "사회", "생활/문화", "IT/과학", "세계", "엔터", "스포츠"
+      ),
       allowNull: false,
     },
     title: {
@@ -46,6 +48,23 @@ const Poll = sequelize.define(
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
+    },
+    respondent_count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    image_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    news_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "news",
+        key: "news_id",
+      },
     },
   },
   {

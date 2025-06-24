@@ -30,6 +30,22 @@ const Comment = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    parent_comment_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "comments",
+        key: "comment_id",
+      },
+    },
+    poll_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "polls",
+        key: "poll_id",
+      },
+    },
   },
   {
     timestamps: true,

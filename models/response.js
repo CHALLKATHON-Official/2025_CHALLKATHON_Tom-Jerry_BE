@@ -36,7 +36,7 @@ const Response = sequelize.define(
     },
   },
   {
-    timestamps: true, // created_at will be used as responded_at
+    timestamps: true, // created_at will be used as responded_at (응답 시각)
     updatedAt: false, // No need for an updated_at field
     underscored: true,
     tableName: 'responses',
