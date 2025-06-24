@@ -96,10 +96,27 @@ router.get("/", async (req, res) => {
       offset,
       order: [['createdAt', 'DESC']],
     });
-    
+
+    // 각 poll의 참여자 수를 responses 테이블에서 count(*)로 계산
+    const pollIds = rows.map(p => p.poll_id);
+    const responseCounts = await Response.findAll({
+      attributes: ['poll_id', [sequelize.fn('COUNT', sequelize.col('response_id')), 'respondent_count']],
+      where: { poll_id: pollIds },
+      group: ['poll_id']
+    });
+    const countMap = {};
+    responseCounts.forEach(rc => {
+      countMap[rc.poll_id] = parseInt(rc.get('respondent_count'), 10);
+    });
+    const pollsWithCount = rows.map(poll => {
+      const pollObj = poll.toJSON();
+      pollObj.respondent_count = countMap[poll.poll_id] || 0;
+      return pollObj;
+    });
+
     return res.status(200).json({
       total: count,
-      polls: rows,
+      polls: pollsWithCount,
     });
 
   } catch (error) {
