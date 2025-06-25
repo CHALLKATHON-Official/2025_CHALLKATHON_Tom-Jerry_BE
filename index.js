@@ -21,6 +21,7 @@ const newsRoutes = require('./routes/news');
 const discussionRoutes = require('./routes/discussions');
 const userRoutes = require('./routes/users');
 const seedData = require('./seedData');
+const commentRoutes = require('./routes/comment');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,3 +62,4 @@ app.use("/api/polls", require("./routes/polls"));
 app.use("/api/discussions", discussionRoutes);
 app.use("/api/news", newsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/comment', commentRoutes);

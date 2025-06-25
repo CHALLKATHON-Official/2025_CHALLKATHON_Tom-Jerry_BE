@@ -21,6 +21,7 @@
   "homepage": "https://github.com/CHALLKATHON-Official/2025_CHALLKATHON_Tom-Jerry_BE#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cheerio": "^1.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",

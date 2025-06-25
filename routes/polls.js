@@ -476,9 +476,7 @@ router.get("/:pollId/discussions", async (req, res) => {
 });
 
 // 여론조사 전체/카테고리별/검색
-router.get('/', async (req, res) => {
-  // 구현 예정
-});
+router.get('/', async (req, res, next) => { next(); });
 
 // 인기 여론조사
 router.get('/popular', async (req, res) => {
@@ -491,9 +489,7 @@ router.get('/trending', async (req, res) => {
 });
 
 // 여론조사 상세
-router.get('/:id', async (req, res) => {
-  // 구현 예정
-});
+router.get('/:id', async (req, res, next) => { next(); });
 
 // 투표
 router.post('/:id/vote', auth, async (req, res) => {
@@ -624,6 +620,10 @@ router.post('/:id/comments', auth, async (req, res) => {
     console.error('Error creating comment:', error);
     return res.status(500).json({ message: '댓글 등록 중 서버 오류가 발생했습니다.' });
   }
+});
+
+router.get('/create', (req, res) => {
+  res.status(405).json({ message: '여론조사 생성은 POST 요청으로만 가능합니다.' });
 });
 
 module.exports = router; 

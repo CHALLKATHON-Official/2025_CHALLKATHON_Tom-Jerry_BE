@@ -152,4 +152,12 @@ router.get("/verify", async (req, res) => {
   }
 });
 
+router.get('/login', (req, res) => {
+  res.status(405).json({ message: '로그인은 POST 요청으로만 가능합니다.' });
+});
+
+router.get('/', (req, res) => {
+  res.status(405).json({ message: '이 경로는 직접 접근할 수 없습니다. 하위 엔드포인트를 이용하세요.' });
+});
+
 module.exports = router;
