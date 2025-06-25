@@ -483,7 +483,31 @@ router.get('/:id/results', async (req, res) => {
 
 // 댓글 목록
 router.get('/:id/comments', async (req, res) => {
-  // 구현 예정
+  const pollId = req.params.id;
+  try {
+    const comments = await Comment.findAll({
+      where: { poll_id: pollId },
+      include: [
+        { 
+          model: User, 
+          as: 'Author', 
+          attributes: ['user_id', 'nickname'] 
+        }
+      ],
+      order: [['createdAt', 'ASC']]
+    });
+    
+    console.log('댓글 목록 조회:', {
+      pollId,
+      commentCount: comments.length,
+      comments: comments.map(c => ({ id: c.comment_id, content: c.content, author: c.Author?.nickname }))
+    });
+    
+    return res.status(200).json(comments);
+  } catch (error) {
+    console.error(`Error fetching comments for poll ${pollId}:`, error);
+    return res.status(500).json({ message: '댓글 목록 조회 중 서버 오류가 발생했습니다.' });
+  }
 });
 
 // 댓글 작성
@@ -491,25 +515,54 @@ router.post('/:id/comments', auth, async (req, res) => {
   const pollId = req.params.id;
   const user_id = req.user.id;
   const { text } = req.body;
+  
+  console.log('댓글 생성 요청:', {
+    pollId,
+    user_id,
+    text,
+    user: req.user
+  });
+  
   if (!text || !text.trim()) {
     return res.status(400).json({ message: '댓글 내용을 입력하세요.' });
   }
+  
   try {
+    // 사용자가 실제로 존재하는지 확인
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      console.error('사용자를 찾을 수 없음:', user_id);
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
+    
     const newComment = await Comment.create({
       poll_id: pollId,
       author_id: user_id,
       content: text.trim()
+      // discussion_id를 완전히 제외
     });
-    // 등록 후 poll 상세 조회와 동일하게 댓글 목록 반환
-    const poll = await Poll.findByPk(pollId, {
+    
+    // 새로 생성된 댓글을 작성자 정보와 함께 반환
+    const commentWithAuthor = await Comment.findByPk(newComment.comment_id, {
       include: [
-        {
-          model: Comment,
-          include: [{ model: User, as: 'Author', attributes: ['user_id', 'nickname'] }],
+        { 
+          model: User, 
+          as: 'Author', 
+          attributes: ['user_id', 'nickname'] 
         }
       ]
     });
-    return res.status(201).json({ message: '댓글이 등록되었습니다.', comments: poll ? poll.Comments : [] });
+    
+    console.log('댓글 생성 완료:', {
+      commentId: newComment.comment_id,
+      content: text.trim(),
+      author: commentWithAuthor?.Author?.nickname
+    });
+    
+    return res.status(201).json({ 
+      message: '댓글이 등록되었습니다.', 
+      comment: commentWithAuthor 
+    });
   } catch (error) {
     console.error('Error creating comment:', error);
     return res.status(500).json({ message: '댓글 등록 중 서버 오류가 발생했습니다.' });

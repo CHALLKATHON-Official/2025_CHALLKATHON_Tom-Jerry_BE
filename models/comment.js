@@ -12,7 +12,7 @@ const Comment = sequelize.define(
     },
     discussion_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "discussions",
         key: "discussion_id",
