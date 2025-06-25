@@ -87,10 +87,12 @@ router.get("/", async (req, res) => {
     try {
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_default_secret');
-      userId = decoded.user.id;
+      if (decoded && decoded.user && decoded.user.id) {
+        userId = decoded.user.id;
+      }
     } catch (error) {
       // 토큰이 유효하지 않으면 무시하고 계속 진행
-      console.log('Invalid token, continuing without user context');
+      console.log('Invalid token, continuing without user context:', error.message);
     }
   }
 
@@ -113,15 +115,19 @@ router.get("/", async (req, res) => {
 
     // 각 poll의 참여자 수를 responses 테이블에서 count(*)로 계산
     const pollIds = rows.map(p => p.poll_id);
-    const responseCounts = await Response.findAll({
-      attributes: ['poll_id', [sequelize.fn('COUNT', sequelize.col('response_id')), 'respondent_count']],
-      where: { poll_id: pollIds },
-      group: ['poll_id']
-    });
-    const countMap = {};
-    responseCounts.forEach(rc => {
-      countMap[rc.poll_id] = parseInt(rc.get('respondent_count'), 10);
-    });
+    let countMap = {};
+    
+    if (pollIds.length > 0) {
+      const responseCounts = await Response.findAll({
+        attributes: ['poll_id', [sequelize.fn('COUNT', sequelize.col('response_id')), 'respondent_count']],
+        where: { poll_id: pollIds },
+        group: ['poll_id']
+      });
+      
+      responseCounts.forEach(rc => {
+        countMap[rc.poll_id] = parseInt(rc.get('respondent_count'), 10);
+      });
+    }
 
     // 인증된 사용자가 있으면 추가 정보 포함
     let processedPolls = rows;
@@ -168,7 +174,13 @@ router.get("/", async (req, res) => {
 
   } catch (error) {
     console.error("Error fetching polls:", error);
-    return res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", {
+      name: error.name,
+      message: error.message,
+      code: error.code
+    });
+    return res.status(500).json({ message: "서버 오류가 발생했습니다.", error: error.message });
   }
 });
 
@@ -185,25 +197,27 @@ router.get("/:id", async (req, res) => {
       try {
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_default_secret');
-        const userResponseData = await Response.findOne({
-          where: {
-            poll_id: pollId,
-            user_id: decoded.user.id
-          },
-          include: [{
-            model: Option,
-            attributes: ['option_id', 'option_text']
-          }]
-        });
-        if (userResponseData) {
-          userResponse = {
-            option_id: userResponseData.Option.option_id,
-            option_text: userResponseData.Option.option_text
-          };
+        if (decoded && decoded.user && decoded.user.id) {
+          const userResponseData = await Response.findOne({
+            where: {
+              poll_id: pollId,
+              user_id: decoded.user.id
+            },
+            include: [{
+              model: Option,
+              attributes: ['option_id', 'option_text']
+            }]
+          });
+          if (userResponseData) {
+            userResponse = {
+              option_id: userResponseData.Option.option_id,
+              option_text: userResponseData.Option.option_text
+            };
+          }
         }
       } catch (error) {
         // Token is invalid, continue without user response
-        console.log('Invalid token, continuing without user response');
+        console.log('Invalid token, continuing without user response:', error.message);
       }
     }
 
