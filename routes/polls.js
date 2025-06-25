@@ -286,6 +286,30 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    // comments 데이터 구조 개선 (프론트엔드 호환성)
+    if (pollData.Comments) {
+      pollData.comments = pollData.Comments.map(comment => ({
+        id: comment.comment_id,
+        commentId: comment.comment_id,
+        content: comment.content,
+        text: comment.content, // 프론트엔드 호환성을 위해 text도 추가
+        author: comment.Author?.nickname || '알 수 없음',
+        authorId: comment.author_id,
+        createdAt: comment.created_at,
+        updatedAt: comment.updated_at
+      }));
+      delete pollData.Comments; // 기존 Comments 제거
+    } else {
+      pollData.comments = []; // comments가 없으면 빈 배열
+    }
+
+    console.log('Poll 상세 조회 응답:', {
+      pollId,
+      title: pollData.title,
+      commentCount: pollData.comments.length,
+      comments: pollData.comments.map(c => ({ id: c.id, content: c.content, author: c.author }))
+    });
+
     return res.status(200).json(pollData);
 
   } catch (error) {
@@ -497,16 +521,35 @@ router.get('/:id/comments', async (req, res) => {
       order: [['createdAt', 'ASC']]
     });
     
+    // 프론트엔드 호환성을 위한 댓글 데이터 구조
+    const formattedComments = comments.map(comment => ({
+      id: comment.comment_id,
+      commentId: comment.comment_id,
+      content: comment.content,
+      text: comment.content,
+      author: comment.Author?.nickname || '알 수 없음',
+      authorId: comment.author_id,
+      createdAt: comment.created_at,
+      updatedAt: comment.updated_at
+    }));
+    
     console.log('댓글 목록 조회:', {
       pollId,
-      commentCount: comments.length,
-      comments: comments.map(c => ({ id: c.comment_id, content: c.content, author: c.Author?.nickname }))
+      commentCount: formattedComments.length,
+      comments: formattedComments.map(c => ({ id: c.id, content: c.content, author: c.author }))
     });
     
-    return res.status(200).json(comments);
+    return res.status(200).json({
+      success: true,
+      comments: formattedComments,
+      total: formattedComments.length
+    });
   } catch (error) {
     console.error(`Error fetching comments for poll ${pollId}:`, error);
-    return res.status(500).json({ message: '댓글 목록 조회 중 서버 오류가 발생했습니다.' });
+    return res.status(500).json({ 
+      success: false,
+      message: '댓글 목록 조회 중 서버 오류가 발생했습니다.' 
+    });
   }
 });
 
@@ -553,15 +596,29 @@ router.post('/:id/comments', auth, async (req, res) => {
       ]
     });
     
+    // 프론트엔드 호환성을 위한 댓글 데이터 구조
+    const formattedComment = {
+      id: commentWithAuthor.comment_id,
+      commentId: commentWithAuthor.comment_id,
+      content: commentWithAuthor.content,
+      text: commentWithAuthor.content,
+      author: commentWithAuthor.Author?.nickname || '알 수 없음',
+      authorId: commentWithAuthor.author_id,
+      createdAt: commentWithAuthor.created_at,
+      updatedAt: commentWithAuthor.updated_at
+    };
+    
     console.log('댓글 생성 완료:', {
       commentId: newComment.comment_id,
       content: text.trim(),
-      author: commentWithAuthor?.Author?.nickname
+      author: commentWithAuthor?.Author?.nickname,
+      formattedComment
     });
     
     return res.status(201).json({ 
       message: '댓글이 등록되었습니다.', 
-      comment: commentWithAuthor 
+      comment: formattedComment,
+      success: true
     });
   } catch (error) {
     console.error('Error creating comment:', error);
