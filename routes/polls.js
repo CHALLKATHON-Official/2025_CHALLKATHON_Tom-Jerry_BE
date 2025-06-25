@@ -79,6 +79,20 @@ router.post("/", auth, async (req, res) => { // Apply auth middleware
 router.get("/", async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = parseInt(req.query.offset) || 0;
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  let userId = null;
+
+  // 토큰이 있으면 사용자 ID 추출
+  if (token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_default_secret');
+      userId = decoded.user.id;
+    } catch (error) {
+      // 토큰이 유효하지 않으면 무시하고 계속 진행
+      console.log('Invalid token, continuing without user context');
+    }
+  }
 
   try {
     const { count, rows } = await Poll.findAndCountAll({
@@ -108,15 +122,48 @@ router.get("/", async (req, res) => {
     responseCounts.forEach(rc => {
       countMap[rc.poll_id] = parseInt(rc.get('respondent_count'), 10);
     });
-    const pollsWithCount = rows.map(poll => {
-      const pollObj = poll.toJSON();
-      pollObj.respondent_count = countMap[poll.poll_id] || 0;
-      return pollObj;
-    });
+
+    // 인증된 사용자가 있으면 추가 정보 포함
+    let processedPolls = rows;
+    if (userId) {
+      // 사용자가 참여한 여론조사 ID 목록 조회
+      const participatedPolls = await Response.findAll({
+        where: { user_id: userId },
+        attributes: ['poll_id'],
+        raw: true
+      });
+      const participatedPollIds = participatedPolls.map(p => p.poll_id);
+
+      // 사용자가 생성한 여론조사 ID 목록 조회
+      const createdPolls = await Poll.findAll({
+        where: { creator_id: userId },
+        attributes: ['poll_id'],
+        raw: true
+      });
+      const createdPollIds = createdPolls.map(p => p.poll_id);
+
+      // 각 여론조사에 isParticipated와 isMine 필드 추가
+      processedPolls = rows.map(poll => {
+        const pollObj = poll.toJSON();
+        pollObj.respondent_count = countMap[poll.poll_id] || 0;
+        pollObj.isParticipated = participatedPollIds.includes(poll.poll_id);
+        pollObj.isMine = createdPollIds.includes(poll.poll_id);
+        pollObj.participant_count = pollObj.respondent_count; // 프론트엔드 호환성을 위해
+        return pollObj;
+      });
+    } else {
+      // 인증되지 않은 사용자
+      processedPolls = rows.map(poll => {
+        const pollObj = poll.toJSON();
+        pollObj.respondent_count = countMap[poll.poll_id] || 0;
+        pollObj.participant_count = pollObj.respondent_count; // 프론트엔드 호환성을 위해
+        return pollObj;
+      });
+    }
 
     return res.status(200).json({
       total: count,
-      polls: pollsWithCount,
+      polls: processedPolls,
     });
 
   } catch (error) {
